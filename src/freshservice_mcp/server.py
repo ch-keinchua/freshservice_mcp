@@ -11,8 +11,10 @@ from enum import IntEnum, Enum
 from pydantic import BaseModel, Field 
 
 
-from dotenv import load_dotenv 
-load_dotenv()
+# NOTE: load_dotenv() removed - Claude Desktop injects env vars directly
+# If running standalone with a .env file, uncomment:
+# from dotenv import load_dotenv
+# load_dotenv()
 
 
 # Set up logging
@@ -170,7 +172,7 @@ async def get_ticket_fields() -> Dict[str, Any]:
     """Get ticket fields from Freshservice."""
     url = f"https://{FRESHSERVICE_DOMAIN}/api/v2/ticket_form_fields"
     headers = get_auth_headers()
-    async with httpx.AsyncClient() as client:
+    async with httpx.AsyncClient(timeout=30.0) as client:
         response = await client.get(url, headers=headers)
         return response.json()
     
@@ -194,7 +196,7 @@ async def get_tickets(page: Optional[int] = 1, per_page: Optional[int] = 30) -> 
     
     headers = get_auth_headers()
 
-    async with httpx.AsyncClient() as client:
+    async with httpx.AsyncClient(timeout=30.0) as client:
         try:
             response = await client.get(url, headers=headers, params=params)
             response.raise_for_status()
@@ -267,7 +269,7 @@ async def create_ticket(
     url = f"https://{FRESHSERVICE_DOMAIN}/api/v2/tickets"
     headers = get_auth_headers()
 
-    async with httpx.AsyncClient() as client:
+    async with httpx.AsyncClient(timeout=30.0) as client:
         try:
             response = await client.post(url, headers=headers, json=data)
             response.raise_for_status()
@@ -304,7 +306,7 @@ async def update_ticket(ticket_id: int, ticket_fields: Dict[str, Any]) -> Dict[s
     if custom_fields:
         update_data['custom_fields'] = custom_fields
 
-    async with httpx.AsyncClient() as client:
+    async with httpx.AsyncClient(timeout=30.0) as client:
         try:
             response = await client.put(url, headers=headers, json=update_data)
             response.raise_for_status()
@@ -354,7 +356,7 @@ async def filter_tickets(query: str, page: int = 1, workspace_id: Optional[int] 
 
     headers = get_auth_headers()
 
-    async with httpx.AsyncClient() as client:
+    async with httpx.AsyncClient(timeout=30.0) as client:
         try:
             response = await client.get(url, headers=headers)
             response.raise_for_status()
@@ -363,7 +365,7 @@ async def filter_tickets(query: str, page: int = 1, workspace_id: Optional[int] 
             try:
                 return {"error": str(e), "details": e.response.json()}
             except Exception:
-                return {"error": str(e), "raw_response": e.response.text}
+                return {"error": str(e), "status_code": e.response.status_code, "note": "Response body redacted for safety"}
         
 #DELETE TICKET.
 @mcp.tool()
@@ -372,7 +374,7 @@ async def delete_ticket(ticket_id: int) -> str:
     url = f"https://{FRESHSERVICE_DOMAIN}/api/v2/tickets/{ticket_id}"
     headers = get_auth_headers()
 
-    async with httpx.AsyncClient() as client:
+    async with httpx.AsyncClient(timeout=30.0) as client:
         response = await client.delete(url, headers=headers)
 
         if response.status_code == 204:
@@ -394,7 +396,7 @@ async def get_ticket_by_id(ticket_id:int) -> Dict[str, Any]:
     url = f"https://{FRESHSERVICE_DOMAIN}/api/v2/tickets/{ticket_id}"
     headers = get_auth_headers()
 
-    async with httpx.AsyncClient() as client:
+    async with httpx.AsyncClient(timeout=30.0) as client:
         response = await client.get(url,headers=headers)
         return response.json()
     
@@ -463,7 +465,7 @@ async def get_changes(
     
     headers = get_auth_headers()
 
-    async with httpx.AsyncClient() as client:
+    async with httpx.AsyncClient(timeout=30.0) as client:
         try:
             response = await client.get(url, headers=headers, params=params)
             response.raise_for_status()
@@ -487,7 +489,7 @@ async def get_changes(
             try:
                 return {"error": str(e), "details": e.response.json()}
             except Exception:
-                return {"error": str(e), "raw_response": e.response.text}
+                return {"error": str(e), "status_code": e.response.status_code, "note": "Response body redacted for safety"}
         except Exception as e:
             return {"error": f"An unexpected error occurred: {str(e)}"}
 
@@ -498,7 +500,7 @@ async def get_change_by_id(change_id: int) -> Dict[str, Any]:
     url = f"https://{FRESHSERVICE_DOMAIN}/api/v2/changes/{change_id}"
     headers = get_auth_headers()
 
-    async with httpx.AsyncClient() as client:
+    async with httpx.AsyncClient(timeout=30.0) as client:
         try:
             response = await client.get(url, headers=headers)
             response.raise_for_status()
@@ -598,7 +600,7 @@ async def create_change(
     url = f"https://{FRESHSERVICE_DOMAIN}/api/v2/changes"
     headers = get_auth_headers()
 
-    async with httpx.AsyncClient() as client:
+    async with httpx.AsyncClient(timeout=30.0) as client:
         try:
             response = await client.post(url, headers=headers, json=data)
             response.raise_for_status()
@@ -655,7 +657,7 @@ async def update_change(change_id: int, change_fields: Dict[str, Any]) -> Dict[s
                 formatted_planning[field] = value
         update_data['planning_fields'] = formatted_planning
 
-    async with httpx.AsyncClient() as client:
+    async with httpx.AsyncClient(timeout=30.0) as client:
         try:
             response = await client.put(url, headers=headers, json=update_data)
             response.raise_for_status()
@@ -714,7 +716,7 @@ async def delete_change(change_id: int) -> str:
     url = f"https://{FRESHSERVICE_DOMAIN}/api/v2/changes/{change_id}"
     headers = get_auth_headers()
 
-    async with httpx.AsyncClient() as client:
+    async with httpx.AsyncClient(timeout=30.0) as client:
         response = await client.delete(url, headers=headers)
 
         if response.status_code == 204:
@@ -778,7 +780,7 @@ async def get_change_tasks(change_id: int) -> Dict[str, Any]:
     url = f"https://{FRESHSERVICE_DOMAIN}/api/v2/changes/{change_id}/tasks"
     headers = get_auth_headers()
 
-    async with httpx.AsyncClient() as client:
+    async with httpx.AsyncClient(timeout=30.0) as client:
         try:
             response = await client.get(url, headers=headers)
             response.raise_for_status()
@@ -797,7 +799,7 @@ async def create_change_note(change_id: int, body: str) -> Dict[str, Any]:
     data = {
         "body": body
     }
-    async with httpx.AsyncClient() as client:
+    async with httpx.AsyncClient(timeout=30.0) as client:
         try:
             response = await client.post(url, headers=headers, json=data)
             response.raise_for_status()
@@ -833,7 +835,7 @@ async def create_change_approval_group(
         "approval_type": approval_type
     }
     
-    async with httpx.AsyncClient() as client:
+    async with httpx.AsyncClient(timeout=30.0) as client:
         try:
             response = await client.post(url, headers=headers, json=data)
             response.raise_for_status()
@@ -842,7 +844,7 @@ async def create_change_approval_group(
             try:
                 return {"error": str(e), "details": e.response.json()}
             except Exception:
-                return {"error": str(e), "raw_response": e.response.text}
+                return {"error": str(e), "status_code": e.response.status_code, "note": "Response body redacted for safety"}
 
 #UPDATE CHANGE APPROVAL GROUP
 @mcp.tool()
@@ -865,7 +867,7 @@ async def update_change_approval_group(
     if approval_type is not None:
         data["approval_type"] = approval_type
     
-    async with httpx.AsyncClient() as client:
+    async with httpx.AsyncClient(timeout=30.0) as client:
         try:
             response = await client.put(url, headers=headers, json=data)
             response.raise_for_status()
@@ -874,7 +876,7 @@ async def update_change_approval_group(
             try:
                 return {"error": str(e), "details": e.response.json()}
             except Exception:
-                return {"error": str(e), "raw_response": e.response.text}
+                return {"error": str(e), "status_code": e.response.status_code, "note": "Response body redacted for safety"}
 
 #CANCEL CHANGE APPROVAL GROUP
 @mcp.tool()
@@ -883,7 +885,7 @@ async def cancel_change_approval_group(change_id: int, group_id: int) -> Dict[st
     url = f"https://{FRESHSERVICE_DOMAIN}/api/v2/changes/{change_id}/approval_groups/{group_id}/cancel"
     headers = get_auth_headers()
     
-    async with httpx.AsyncClient() as client:
+    async with httpx.AsyncClient(timeout=30.0) as client:
         try:
             response = await client.put(url, headers=headers)
             response.raise_for_status()
@@ -892,7 +894,7 @@ async def cancel_change_approval_group(change_id: int, group_id: int) -> Dict[st
             try:
                 return {"error": str(e), "details": e.response.json()}
             except Exception:
-                return {"error": str(e), "raw_response": e.response.text}
+                return {"error": str(e), "status_code": e.response.status_code, "note": "Response body redacted for safety"}
 
 #UPDATE APPROVAL CHAIN RULE FOR CHANGE
 @mcp.tool()
@@ -913,7 +915,7 @@ async def update_approval_chain_rule_change(
     headers = get_auth_headers()
     data = {"approval_chain_type": approval_chain_type}
     
-    async with httpx.AsyncClient() as client:
+    async with httpx.AsyncClient(timeout=30.0) as client:
         try:
             response = await client.put(url, headers=headers, json=data)
             response.raise_for_status()
@@ -922,7 +924,7 @@ async def update_approval_chain_rule_change(
             try:
                 return {"error": str(e), "details": e.response.json()}
             except Exception:
-                return {"error": str(e), "raw_response": e.response.text}
+                return {"error": str(e), "status_code": e.response.status_code, "note": "Response body redacted for safety"}
 
 #LIST CHANGE APPROVAL GROUPS
 @mcp.tool()
@@ -931,7 +933,7 @@ async def list_change_approval_groups(change_id: int) -> Dict[str, Any]:
     url = f"https://{FRESHSERVICE_DOMAIN}/api/v2/changes/{change_id}/approval_groups"
     headers = get_auth_headers()
     
-    async with httpx.AsyncClient() as client:
+    async with httpx.AsyncClient(timeout=30.0) as client:
         try:
             response = await client.get(url, headers=headers)
             response.raise_for_status()
@@ -940,7 +942,7 @@ async def list_change_approval_groups(change_id: int) -> Dict[str, Any]:
             try:
                 return {"error": str(e), "details": e.response.json()}
             except Exception:
-                return {"error": str(e), "raw_response": e.response.text}
+                return {"error": str(e), "status_code": e.response.status_code, "note": "Response body redacted for safety"}
 
 #VIEW CHANGE APPROVAL
 @mcp.tool()
@@ -949,7 +951,7 @@ async def view_change_approval(change_id: int, approval_id: int) -> Dict[str, An
     url = f"https://{FRESHSERVICE_DOMAIN}/api/v2/changes/{change_id}/approvals/{approval_id}"
     headers = get_auth_headers()
     
-    async with httpx.AsyncClient() as client:
+    async with httpx.AsyncClient(timeout=30.0) as client:
         try:
             response = await client.get(url, headers=headers)
             response.raise_for_status()
@@ -958,7 +960,7 @@ async def view_change_approval(change_id: int, approval_id: int) -> Dict[str, An
             try:
                 return {"error": str(e), "details": e.response.json()}
             except Exception:
-                return {"error": str(e), "raw_response": e.response.text}
+                return {"error": str(e), "status_code": e.response.status_code, "note": "Response body redacted for safety"}
 
 #LIST CHANGE APPROVALS
 @mcp.tool()
@@ -967,7 +969,7 @@ async def list_change_approvals(change_id: int) -> Dict[str, Any]:
     url = f"https://{FRESHSERVICE_DOMAIN}/api/v2/changes/{change_id}/approvals"
     headers = get_auth_headers()
     
-    async with httpx.AsyncClient() as client:
+    async with httpx.AsyncClient(timeout=30.0) as client:
         try:
             response = await client.get(url, headers=headers)
             response.raise_for_status()
@@ -976,7 +978,7 @@ async def list_change_approvals(change_id: int) -> Dict[str, Any]:
             try:
                 return {"error": str(e), "details": e.response.json()}
             except Exception:
-                return {"error": str(e), "raw_response": e.response.text}
+                return {"error": str(e), "status_code": e.response.status_code, "note": "Response body redacted for safety"}
 
 #SEND CHANGE APPROVAL REMINDER
 @mcp.tool()
@@ -985,7 +987,7 @@ async def send_change_approval_reminder(change_id: int, approval_id: int) -> Dic
     url = f"https://{FRESHSERVICE_DOMAIN}/api/v2/changes/{change_id}/approvals/{approval_id}/resend_approval"
     headers = get_auth_headers()
     
-    async with httpx.AsyncClient() as client:
+    async with httpx.AsyncClient(timeout=30.0) as client:
         try:
             response = await client.put(url, headers=headers)
             response.raise_for_status()
@@ -994,7 +996,7 @@ async def send_change_approval_reminder(change_id: int, approval_id: int) -> Dic
             try:
                 return {"error": str(e), "details": e.response.json()}
             except Exception:
-                return {"error": str(e), "raw_response": e.response.text}
+                return {"error": str(e), "status_code": e.response.status_code, "note": "Response body redacted for safety"}
 
 #CANCEL CHANGE APPROVAL
 @mcp.tool()
@@ -1003,7 +1005,7 @@ async def cancel_change_approval(change_id: int, approval_id: int) -> Dict[str, 
     url = f"https://{FRESHSERVICE_DOMAIN}/api/v2/changes/{change_id}/approvals/{approval_id}/cancel"
     headers = get_auth_headers()
     
-    async with httpx.AsyncClient() as client:
+    async with httpx.AsyncClient(timeout=30.0) as client:
         try:
             response = await client.put(url, headers=headers)
             response.raise_for_status()
@@ -1012,7 +1014,7 @@ async def cancel_change_approval(change_id: int, approval_id: int) -> Dict[str, 
             try:
                 return {"error": str(e), "details": e.response.json()}
             except Exception:
-                return {"error": str(e), "raw_response": e.response.text}
+                return {"error": str(e), "status_code": e.response.status_code, "note": "Response body redacted for safety"}
 
 # CHANGES NOTES ENDPOINTS
 
@@ -1023,7 +1025,7 @@ async def view_change_note(change_id: int, note_id: int) -> Dict[str, Any]:
     url = f"https://{FRESHSERVICE_DOMAIN}/api/v2/changes/{change_id}/notes/{note_id}"
     headers = get_auth_headers()
     
-    async with httpx.AsyncClient() as client:
+    async with httpx.AsyncClient(timeout=30.0) as client:
         try:
             response = await client.get(url, headers=headers)
             response.raise_for_status()
@@ -1032,7 +1034,7 @@ async def view_change_note(change_id: int, note_id: int) -> Dict[str, Any]:
             try:
                 return {"error": str(e), "details": e.response.json()}
             except Exception:
-                return {"error": str(e), "raw_response": e.response.text}
+                return {"error": str(e), "status_code": e.response.status_code, "note": "Response body redacted for safety"}
 
 #LIST CHANGE NOTES
 @mcp.tool()
@@ -1041,7 +1043,7 @@ async def list_change_notes(change_id: int) -> Dict[str, Any]:
     url = f"https://{FRESHSERVICE_DOMAIN}/api/v2/changes/{change_id}/notes"
     headers = get_auth_headers()
     
-    async with httpx.AsyncClient() as client:
+    async with httpx.AsyncClient(timeout=30.0) as client:
         try:
             response = await client.get(url, headers=headers)
             response.raise_for_status()
@@ -1050,7 +1052,7 @@ async def list_change_notes(change_id: int) -> Dict[str, Any]:
             try:
                 return {"error": str(e), "details": e.response.json()}
             except Exception:
-                return {"error": str(e), "raw_response": e.response.text}
+                return {"error": str(e), "status_code": e.response.status_code, "note": "Response body redacted for safety"}
 
 #UPDATE CHANGE NOTE
 @mcp.tool()
@@ -1060,7 +1062,7 @@ async def update_change_note(change_id: int, note_id: int, body: str) -> Dict[st
     headers = get_auth_headers()
     data = {"body": body}
     
-    async with httpx.AsyncClient() as client:
+    async with httpx.AsyncClient(timeout=30.0) as client:
         try:
             response = await client.put(url, headers=headers, json=data)
             response.raise_for_status()
@@ -1069,7 +1071,7 @@ async def update_change_note(change_id: int, note_id: int, body: str) -> Dict[st
             try:
                 return {"error": str(e), "details": e.response.json()}
             except Exception:
-                return {"error": str(e), "raw_response": e.response.text}
+                return {"error": str(e), "status_code": e.response.status_code, "note": "Response body redacted for safety"}
 
 #DELETE CHANGE NOTE
 @mcp.tool()
@@ -1078,7 +1080,7 @@ async def delete_change_note(change_id: int, note_id: int) -> Dict[str, Any]:
     url = f"https://{FRESHSERVICE_DOMAIN}/api/v2/changes/{change_id}/notes/{note_id}"
     headers = get_auth_headers()
     
-    async with httpx.AsyncClient() as client:
+    async with httpx.AsyncClient(timeout=30.0) as client:
         try:
             response = await client.delete(url, headers=headers)
             if response.status_code == 204:
@@ -1089,7 +1091,7 @@ async def delete_change_note(change_id: int, note_id: int) -> Dict[str, Any]:
             try:
                 return {"error": str(e), "details": e.response.json()}
             except Exception:
-                return {"error": str(e), "raw_response": e.response.text}
+                return {"error": str(e), "status_code": e.response.status_code, "note": "Response body redacted for safety"}
 
 # CHANGES TASKS ENDPOINTS
 
@@ -1123,7 +1125,7 @@ async def create_change_task(
     if due_date:
         data["due_date"] = due_date
     
-    async with httpx.AsyncClient() as client:
+    async with httpx.AsyncClient(timeout=30.0) as client:
         try:
             response = await client.post(url, headers=headers, json=data)
             response.raise_for_status()
@@ -1132,7 +1134,7 @@ async def create_change_task(
             try:
                 return {"error": str(e), "details": e.response.json()}
             except Exception:
-                return {"error": str(e), "raw_response": e.response.text}
+                return {"error": str(e), "status_code": e.response.status_code, "note": "Response body redacted for safety"}
 
 #VIEW CHANGE TASK
 @mcp.tool()
@@ -1141,7 +1143,7 @@ async def view_change_task(change_id: int, task_id: int) -> Dict[str, Any]:
     url = f"https://{FRESHSERVICE_DOMAIN}/api/v2/changes/{change_id}/tasks/{task_id}"
     headers = get_auth_headers()
     
-    async with httpx.AsyncClient() as client:
+    async with httpx.AsyncClient(timeout=30.0) as client:
         try:
             response = await client.get(url, headers=headers)
             response.raise_for_status()
@@ -1150,7 +1152,7 @@ async def view_change_task(change_id: int, task_id: int) -> Dict[str, Any]:
             try:
                 return {"error": str(e), "details": e.response.json()}
             except Exception:
-                return {"error": str(e), "raw_response": e.response.text}
+                return {"error": str(e), "status_code": e.response.status_code, "note": "Response body redacted for safety"}
 
 #UPDATE CHANGE TASK
 @mcp.tool()
@@ -1163,7 +1165,7 @@ async def update_change_task(
     url = f"https://{FRESHSERVICE_DOMAIN}/api/v2/changes/{change_id}/tasks/{task_id}"
     headers = get_auth_headers()
     
-    async with httpx.AsyncClient() as client:
+    async with httpx.AsyncClient(timeout=30.0) as client:
         try:
             response = await client.put(url, headers=headers, json=task_fields)
             response.raise_for_status()
@@ -1172,7 +1174,7 @@ async def update_change_task(
             try:
                 return {"error": str(e), "details": e.response.json()}
             except Exception:
-                return {"error": str(e), "raw_response": e.response.text}
+                return {"error": str(e), "status_code": e.response.status_code, "note": "Response body redacted for safety"}
 
 #DELETE CHANGE TASK
 @mcp.tool()
@@ -1181,7 +1183,7 @@ async def delete_change_task(change_id: int, task_id: int) -> Dict[str, Any]:
     url = f"https://{FRESHSERVICE_DOMAIN}/api/v2/changes/{change_id}/tasks/{task_id}"
     headers = get_auth_headers()
     
-    async with httpx.AsyncClient() as client:
+    async with httpx.AsyncClient(timeout=30.0) as client:
         try:
             response = await client.delete(url, headers=headers)
             if response.status_code == 204:
@@ -1192,7 +1194,7 @@ async def delete_change_task(change_id: int, task_id: int) -> Dict[str, Any]:
             try:
                 return {"error": str(e), "details": e.response.json()}
             except Exception:
-                return {"error": str(e), "raw_response": e.response.text}
+                return {"error": str(e), "status_code": e.response.status_code, "note": "Response body redacted for safety"}
 
 # CHANGES TIME ENTRIES ENDPOINTS
 
@@ -1226,7 +1228,7 @@ async def create_change_time_entry(
     if executed_at:
         data["executed_at"] = executed_at
     
-    async with httpx.AsyncClient() as client:
+    async with httpx.AsyncClient(timeout=30.0) as client:
         try:
             response = await client.post(url, headers=headers, json=data)
             response.raise_for_status()
@@ -1235,7 +1237,7 @@ async def create_change_time_entry(
             try:
                 return {"error": str(e), "details": e.response.json()}
             except Exception:
-                return {"error": str(e), "raw_response": e.response.text}
+                return {"error": str(e), "status_code": e.response.status_code, "note": "Response body redacted for safety"}
 
 #VIEW CHANGE TIME ENTRY
 @mcp.tool()
@@ -1244,7 +1246,7 @@ async def view_change_time_entry(change_id: int, time_entry_id: int) -> Dict[str
     url = f"https://{FRESHSERVICE_DOMAIN}/api/v2/changes/{change_id}/time_entries/{time_entry_id}"
     headers = get_auth_headers()
     
-    async with httpx.AsyncClient() as client:
+    async with httpx.AsyncClient(timeout=30.0) as client:
         try:
             response = await client.get(url, headers=headers)
             response.raise_for_status()
@@ -1253,7 +1255,7 @@ async def view_change_time_entry(change_id: int, time_entry_id: int) -> Dict[str
             try:
                 return {"error": str(e), "details": e.response.json()}
             except Exception:
-                return {"error": str(e), "raw_response": e.response.text}
+                return {"error": str(e), "status_code": e.response.status_code, "note": "Response body redacted for safety"}
 
 #LIST CHANGE TIME ENTRIES
 @mcp.tool()
@@ -1262,7 +1264,7 @@ async def list_change_time_entries(change_id: int) -> Dict[str, Any]:
     url = f"https://{FRESHSERVICE_DOMAIN}/api/v2/changes/{change_id}/time_entries"
     headers = get_auth_headers()
     
-    async with httpx.AsyncClient() as client:
+    async with httpx.AsyncClient(timeout=30.0) as client:
         try:
             response = await client.get(url, headers=headers)
             response.raise_for_status()
@@ -1271,7 +1273,7 @@ async def list_change_time_entries(change_id: int) -> Dict[str, Any]:
             try:
                 return {"error": str(e), "details": e.response.json()}
             except Exception:
-                return {"error": str(e), "raw_response": e.response.text}
+                return {"error": str(e), "status_code": e.response.status_code, "note": "Response body redacted for safety"}
 
 #UPDATE CHANGE TIME ENTRY
 @mcp.tool()
@@ -1291,7 +1293,7 @@ async def update_change_time_entry(
     if note is not None:
         data["note"] = note
     
-    async with httpx.AsyncClient() as client:
+    async with httpx.AsyncClient(timeout=30.0) as client:
         try:
             response = await client.put(url, headers=headers, json=data)
             response.raise_for_status()
@@ -1300,7 +1302,7 @@ async def update_change_time_entry(
             try:
                 return {"error": str(e), "details": e.response.json()}
             except Exception:
-                return {"error": str(e), "raw_response": e.response.text}
+                return {"error": str(e), "status_code": e.response.status_code, "note": "Response body redacted for safety"}
 
 #DELETE CHANGE TIME ENTRY
 @mcp.tool()
@@ -1309,7 +1311,7 @@ async def delete_change_time_entry(change_id: int, time_entry_id: int) -> Dict[s
     url = f"https://{FRESHSERVICE_DOMAIN}/api/v2/changes/{change_id}/time_entries/{time_entry_id}"
     headers = get_auth_headers()
     
-    async with httpx.AsyncClient() as client:
+    async with httpx.AsyncClient(timeout=30.0) as client:
         try:
             response = await client.delete(url, headers=headers)
             if response.status_code == 204:
@@ -1320,7 +1322,7 @@ async def delete_change_time_entry(change_id: int, time_entry_id: int) -> Dict[s
             try:
                 return {"error": str(e), "details": e.response.json()}
             except Exception:
-                return {"error": str(e), "raw_response": e.response.text}
+                return {"error": str(e), "status_code": e.response.status_code, "note": "Response body redacted for safety"}
 
 # OTHER CHANGES ENDPOINTS
 
@@ -1332,7 +1334,7 @@ async def move_change(change_id: int, workspace_id: int) -> Dict[str, Any]:
     headers = get_auth_headers()
     data = {"workspace_id": workspace_id}
     
-    async with httpx.AsyncClient() as client:
+    async with httpx.AsyncClient(timeout=30.0) as client:
         try:
             response = await client.put(url, headers=headers, json=data)
             response.raise_for_status()
@@ -1341,7 +1343,7 @@ async def move_change(change_id: int, workspace_id: int) -> Dict[str, Any]:
             try:
                 return {"error": str(e), "details": e.response.json()}
             except Exception:
-                return {"error": str(e), "raw_response": e.response.text}
+                return {"error": str(e), "status_code": e.response.status_code, "note": "Response body redacted for safety"}
 
 #LIST CHANGE FIELDS
 @mcp.tool()
@@ -1350,7 +1352,7 @@ async def list_change_fields() -> Dict[str, Any]:
     url = f"https://{FRESHSERVICE_DOMAIN}/api/v2/change_form_fields"
     headers = get_auth_headers()
     
-    async with httpx.AsyncClient() as client:
+    async with httpx.AsyncClient(timeout=30.0) as client:
         try:
             response = await client.get(url, headers=headers)
             response.raise_for_status()
@@ -1359,7 +1361,7 @@ async def list_change_fields() -> Dict[str, Any]:
             try:
                 return {"error": str(e), "details": e.response.json()}
             except Exception:
-                return {"error": str(e), "raw_response": e.response.text}
+                return {"error": str(e), "status_code": e.response.status_code, "note": "Response body redacted for safety"}
 
 #GET SERVICE ITEMS
 @mcp.tool()
@@ -1376,7 +1378,7 @@ async def list_service_items(page: Optional[int] = 1, per_page: Optional[int] = 
     all_items: List[Dict[str, Any]] = []
     current_page = page
 
-    async with httpx.AsyncClient() as client:
+    async with httpx.AsyncClient(timeout=30.0) as client:
         while True:
             params = {
                 "page": current_page,
@@ -1423,7 +1425,7 @@ async def get_requested_items(ticket_id: int) -> dict:
         url = f"https://{FRESHSERVICE_DOMAIN}/api/v2/tickets/{ticket_id}"
         headers = get_auth_headers()  
 
-        async with httpx.AsyncClient() as client:
+        async with httpx.AsyncClient(timeout=30.0) as client:
             try:
                 response = await client.get(url, headers=headers)
                 response.raise_for_status()  
@@ -1451,7 +1453,7 @@ async def get_requested_items(ticket_id: int) -> dict:
     url = f"https://{FRESHSERVICE_DOMAIN}/api/v2/tickets/{ticket_id}/requested_items"
     headers = get_auth_headers()  # Use your existing method to get the headers
 
-    async with httpx.AsyncClient() as client:
+    async with httpx.AsyncClient(timeout=30.0) as client:
         try:
             # Send GET request to fetch requested items
             response = await client.get(url, headers=headers)
@@ -1496,7 +1498,7 @@ async def create_service_request(
 
     headers = get_auth_headers()
 
-    async with httpx.AsyncClient() as client:
+    async with httpx.AsyncClient(timeout=30.0) as client:
         try:
             response = await client.post(url, headers=headers, json=payload)
             response.raise_for_status()
@@ -1559,7 +1561,7 @@ async def send_ticket_reply(
 
     headers = get_auth_headers()
 
-    async with httpx.AsyncClient() as client:
+    async with httpx.AsyncClient(timeout=30.0) as client:
         try:
             response = await client.post(url, json=payload, headers=headers)
             response.raise_for_status()
@@ -1578,7 +1580,7 @@ async def create_ticket_note(ticket_id: int,body: str)-> Dict[str, Any]:
     data = {
         "body": body
     }
-    async with httpx.AsyncClient() as client:
+    async with httpx.AsyncClient(timeout=30.0) as client:
         response = await client.post(url, headers=headers, json=data)
         return response.json()
     
@@ -1593,7 +1595,7 @@ async def update_ticket_conversation(conversation_id: int,body: str)-> Dict[str,
     data = {
         "body": body
     }
-    async with httpx.AsyncClient() as client:
+    async with httpx.AsyncClient(timeout=30.0) as client:
         response = await client.put(url, headers=headers, json=data)
         status_code = response.status_code
         if status_code == 200:
@@ -1608,7 +1610,7 @@ async def list_all_ticket_conversation(ticket_id: int)-> Dict[str, Any]:
     url = f"https://{FRESHSERVICE_DOMAIN}/api/v2/tickets/{ticket_id}/conversations"
     headers = get_auth_headers()
    
-    async with httpx.AsyncClient() as client:
+    async with httpx.AsyncClient(timeout=30.0) as client:
         response = await client.get(url, headers=headers)
         status_code = response.status_code
         if status_code == 200:
@@ -1634,7 +1636,7 @@ async def get_all_products(page: Optional[int] = 1, per_page: Optional[int] = 30
         "per_page": per_page
     }
 
-    async with httpx.AsyncClient() as client:
+    async with httpx.AsyncClient(timeout=30.0) as client:
         try:
             response = await client.get(url, headers=headers, params=params)
             response.raise_for_status()
@@ -1669,7 +1671,7 @@ async def get_products_by_id(product_id:int)-> Dict[str, Any]:
     url = f"https://{FRESHSERVICE_DOMAIN}/api/v2/products/{product_id}"
     headers = get_auth_headers()
    
-    async with httpx.AsyncClient() as client:
+    async with httpx.AsyncClient(timeout=30.0) as client:
         response = await client.get(url, headers=headers)
         status_code = response.status_code
         if status_code == 200:
@@ -1734,7 +1736,7 @@ async def create_product(
     if description_text:
         payload["description_text"] = description_text
 
-    async with httpx.AsyncClient() as client:
+    async with httpx.AsyncClient(timeout=30.0) as client:
         try:
             response = await client.post(url, headers=headers, json=payload)
             response.raise_for_status()
@@ -1809,7 +1811,7 @@ async def update_product(
     if description_text:
         payload["description_text"] = description_text
 
-    async with httpx.AsyncClient() as client:
+    async with httpx.AsyncClient(timeout=30.0) as client:
         try:
             response = await client.put(url, headers=headers, json=payload)
             response.raise_for_status()
@@ -1888,7 +1890,7 @@ async def create_requester(
 
     payload.update({k: v for k, v in optional_fields.items() if v is not None})
 
-    async with httpx.AsyncClient() as client:
+    async with httpx.AsyncClient(timeout=30.0) as client:
         try:
             response = await client.post(url, headers=headers, json=payload)
             response.raise_for_status()
@@ -1921,7 +1923,7 @@ async def get_all_requesters(page: int = 1, per_page: int = 30) -> Dict[str, Any
     headers = get_auth_headers()
     params = {"page": page, "per_page": per_page}
 
-    async with httpx.AsyncClient() as client:
+    async with httpx.AsyncClient(timeout=30.0) as client:
         try:
             response = await client.get(url, headers=headers, params=params)
             response.raise_for_status()
@@ -1955,7 +1957,7 @@ async def get_requester_id(requester_id:int)-> Dict[str, Any]:
     url = f"https://{FRESHSERVICE_DOMAIN}/api/v2/requesters/{requester_id}"
     headers = get_auth_headers()
    
-    async with httpx.AsyncClient() as client:
+    async with httpx.AsyncClient(timeout=30.0) as client:
         response = await client.get(url, headers=headers)
         status_code = response.status_code
         if status_code == 200:
@@ -1970,7 +1972,7 @@ async def list_all_requester_fields()-> Dict[str, Any]:
     url = f"https://{FRESHSERVICE_DOMAIN}/api/v2/requester_fields"
     headers = get_auth_headers()
    
-    async with httpx.AsyncClient() as client:
+    async with httpx.AsyncClient(timeout=30.0) as client:
         response = await client.get(url, headers=headers)
         status_code = response.status_code
         if status_code == 200:
@@ -2027,7 +2029,7 @@ async def update_requester(
 
     data = {k: v for k, v in payload.items() if v is not None}
 
-    async with httpx.AsyncClient() as client:
+    async with httpx.AsyncClient(timeout=30.0) as client:
         response = await client.put(url, headers=headers, json=data)
         if response.status_code == 200:
             return response.json()
@@ -2046,7 +2048,7 @@ async def filter_requesters(query: str,include_agents: bool = False) -> Dict[str
 
     headers = get_auth_headers()
 
-    async with httpx.AsyncClient() as client:
+    async with httpx.AsyncClient(timeout=30.0) as client:
         response = await client.get(url, headers=headers)
         if response.status_code == 200:
             return response.json()
@@ -2082,7 +2084,7 @@ async def create_agent(
     url = f"https://{FRESHSERVICE_DOMAIN}/api/v2/agents"
     headers = get_auth_headers()
 
-    async with httpx.AsyncClient() as client:
+    async with httpx.AsyncClient(timeout=30.0) as client:
         response = await client.post(url, headers=headers, json=data)
         if response.status_code == 200 or response.status_code == 201:
             return response.json()
@@ -2100,7 +2102,7 @@ async def get_agent(agent_id:int)-> Dict[str, Any]:
     url = f"https://{FRESHSERVICE_DOMAIN}/api/v2/agents/{agent_id}"
     headers = get_auth_headers()
    
-    async with httpx.AsyncClient() as client:
+    async with httpx.AsyncClient(timeout=30.0) as client:
         response = await client.get(url, headers=headers)
         status_code = response.status_code
         if status_code == 200:
@@ -2122,7 +2124,7 @@ async def get_all_agents(page: int = 1, per_page: int = 30) -> Dict[str, Any]:
     headers = get_auth_headers()
     params = {"page": page, "per_page": per_page}
 
-    async with httpx.AsyncClient() as client:
+    async with httpx.AsyncClient(timeout=30.0) as client:
         try:
             response = await client.get(url, headers=headers, params=params)
             response.raise_for_status()
@@ -2169,7 +2171,7 @@ async def filter_agents(query: str) -> List[Dict[str, Any]]:
     # Freshservice API requires the query to be wrapped in double quotes
     encoded_query = urllib.parse.quote(f'"{query}"')
 
-    async with httpx.AsyncClient() as client:
+    async with httpx.AsyncClient(timeout=30.0) as client:
         while True:
             url = f"{base_url}?query={encoded_query}&page={page}"
             response = await client.get(url, headers=headers)
@@ -2215,7 +2217,7 @@ async def update_agent(agent_id, occasional=None, email=None, department_ids=Non
     
     payload = {k: v for k, v in payload.items() if v is not None}
     
-    async with httpx.AsyncClient() as client:
+    async with httpx.AsyncClient(timeout=30.0) as client:
         response = await client.put(url, headers=headers,json=payload)
         status_code = response.status_code
         if status_code == 200:
@@ -2230,7 +2232,7 @@ async def get_agent_fields()-> Dict[str, Any]:
     url = f"https://{FRESHSERVICE_DOMAIN}/api/v2/agent_fields"
     headers = get_auth_headers()
    
-    async with httpx.AsyncClient() as client:
+    async with httpx.AsyncClient(timeout=30.0) as client:
         response = await client.get(url, headers=headers)
         status_code = response.status_code
         if status_code == 200:
@@ -2245,7 +2247,7 @@ async def get_all_agent_groups()-> Dict[str, Any]:
     url = f"https://{FRESHSERVICE_DOMAIN}/api/v2/groups"
     headers = get_auth_headers()
    
-    async with httpx.AsyncClient() as client:
+    async with httpx.AsyncClient(timeout=30.0) as client:
         response = await client.get(url, headers=headers)
         status_code = response.status_code
         if status_code == 200:
@@ -2260,7 +2262,7 @@ async def getAgentGroupById(group_id:int)-> Dict[str, Any]:
     url = f"https://{FRESHSERVICE_DOMAIN}/api/v2/groups/{group_id}"
     headers = get_auth_headers()
    
-    async with httpx.AsyncClient() as client:
+    async with httpx.AsyncClient(timeout=30.0) as client:
         response = await client.get(url, headers=headers)
         status_code = response.status_code
         if status_code == 200:
@@ -2278,7 +2280,7 @@ async def add_requester_to_group(
     url = f"https://{FRESHSERVICE_DOMAIN}/api/v2/requester_groups/{group_id}/members/{requester_id}"
     headers = get_auth_headers()  
 
-    async with httpx.AsyncClient() as client:
+    async with httpx.AsyncClient(timeout=30.0) as client:
         try:
             response = await client.post(url, headers=headers)
             response.raise_for_status() 
@@ -2308,7 +2310,7 @@ async def create_group(group_data: Dict[str, Any]) -> Dict[str, Any]:
     url = f"https://{FRESHSERVICE_DOMAIN}/api/v2/groups"
     headers = get_auth_headers()
 
-    async with httpx.AsyncClient() as client:
+    async with httpx.AsyncClient(timeout=30.0) as client:
         try:
             response = await client.post(url, headers=headers, json=group_data)
             response.raise_for_status()
@@ -2338,7 +2340,7 @@ async def update_group(group_id: int, group_fields: Dict[str, Any]) -> Dict[str,
         return {"error": f"Validation error: {str(e)}"}
     url = f"https://{FRESHSERVICE_DOMAIN}/api/v2/groups/{group_id}"
     headers = get_auth_headers()
-    async with httpx.AsyncClient() as client:
+    async with httpx.AsyncClient(timeout=30.0) as client:
         try:
             response = await client.put(url, headers=headers, json=group_data)
             response.raise_for_status()
@@ -2375,7 +2377,7 @@ async def get_all_requester_groups(page: Optional[int] = 1, per_page: Optional[i
         "per_page": per_page
     }
 
-    async with httpx.AsyncClient() as client:
+    async with httpx.AsyncClient(timeout=30.0) as client:
         try:
             response = await client.get(url, headers=headers, params=params)
             response.raise_for_status()
@@ -2409,7 +2411,7 @@ async def get_requester_groups_by_id(requester_group_id:int)-> Dict[str, Any]:
     url = f"https://{FRESHSERVICE_DOMAIN}/api/v2/requester_groups/{requester_group_id}"
     headers = get_auth_headers()
    
-    async with httpx.AsyncClient() as client:
+    async with httpx.AsyncClient(timeout=30.0) as client:
         response = await client.get(url, headers=headers)
         status_code = response.status_code
         if status_code == 200:
@@ -2431,7 +2433,7 @@ async def create_requester_group(
     url = f"https://{FRESHSERVICE_DOMAIN}/api/v2/requester_groups"
     headers = get_auth_headers()
 
-    async with httpx.AsyncClient() as client:
+    async with httpx.AsyncClient(timeout=30.0) as client:
         try:
             response = await client.post(url, headers=headers, json=group_data)
             response.raise_for_status()
@@ -2470,7 +2472,7 @@ async def update_requester_group(id: int,name: Optional[str] = None,description:
     url = f"https://{FRESHSERVICE_DOMAIN}/api/v2/requester_groups/{id}"
     headers = get_auth_headers()
 
-    async with httpx.AsyncClient() as client:
+    async with httpx.AsyncClient(timeout=30.0) as client:
         try:
             response = await client.put(url, headers=headers, json=group_data)
             response.raise_for_status()
@@ -2497,7 +2499,7 @@ async def list_requester_group_members(
     url = f"https://{FRESHSERVICE_DOMAIN}/api/v2/requester_groups/{group_id}/members"
     headers = get_auth_headers()
 
-    async with httpx.AsyncClient() as client:
+    async with httpx.AsyncClient(timeout=30.0) as client:
         try:
             response = await client.get(url, headers=headers)
             response.raise_for_status() 
@@ -2529,7 +2531,7 @@ async def get_all_canned_response() -> Dict[str, Any]:
     url = f"https://{FRESHSERVICE_DOMAIN}/api/v2/canned_responses"
     headers = get_auth_headers()
 
-    async with httpx.AsyncClient() as client:
+    async with httpx.AsyncClient(timeout=30.0) as client:
         try:
             response = await client.get(url, headers=headers)
             response.raise_for_status()  # Will raise an exception for 4xx/5xx responses
@@ -2564,7 +2566,7 @@ async def get_canned_response(
     url = f"https://{FRESHSERVICE_DOMAIN}/api/v2/canned_responses/{id}"
     headers = get_auth_headers()
 
-    async with httpx.AsyncClient() as client:
+    async with httpx.AsyncClient(timeout=30.0) as client:
         try:
             response = await client.get(url, headers=headers)
             response.raise_for_status()  # Will raise HTTPStatusError for 4xx/5xx responses
@@ -2596,7 +2598,7 @@ async def list_all_canned_response_folder() -> Dict[str, Any]:
     url = f"https://{FRESHSERVICE_DOMAIN}/api/v2/canned_response_folders"
     headers = get_auth_headers()
 
-    async with httpx.AsyncClient() as client:
+    async with httpx.AsyncClient(timeout=30.0) as client:
         try:
             response = await client.get(url, headers=headers)
             response.raise_for_status()  
@@ -2630,7 +2632,7 @@ async def list_canned_response_folder(
     url = f"https://{FRESHSERVICE_DOMAIN}/api/v2/canned_response_folders/{id}"
     headers = get_auth_headers()
 
-    async with httpx.AsyncClient() as client:
+    async with httpx.AsyncClient(timeout=30.0) as client:
         try:
             response = await client.get(url, headers=headers)
             response.raise_for_status() 
@@ -2662,7 +2664,7 @@ async def list_all_workspaces() -> Dict[str, Any]:
     url = f"https://{FRESHSERVICE_DOMAIN}/api/v2/workspaces"
     headers = get_auth_headers()
 
-    async with httpx.AsyncClient() as client:
+    async with httpx.AsyncClient(timeout=30.0) as client:
         try:
             response = await client.get(url, headers=headers)
             response.raise_for_status()  
@@ -2694,7 +2696,7 @@ async def get_workspace(id: int) -> Dict[str, Any]:
     url = f"https://{FRESHSERVICE_DOMAIN}/api/v2/workspaces/{id}"
     headers = get_auth_headers()
 
-    async with httpx.AsyncClient() as client:
+    async with httpx.AsyncClient(timeout=30.0) as client:
         try:
             response = await client.get(url, headers=headers)
             response.raise_for_status()  
@@ -2726,7 +2728,7 @@ async def get_all_solution_category() -> Dict[str, Any]:
     url = f"https://{FRESHSERVICE_DOMAIN}/api/v2/solutions/categories"
     headers = get_auth_headers()
 
-    async with httpx.AsyncClient() as client:
+    async with httpx.AsyncClient(timeout=30.0) as client:
         try:
             response = await client.get(url, headers=headers)
             response.raise_for_status()  
@@ -2758,7 +2760,7 @@ async def get_solution_category(id: int) -> Dict[str, Any]:
     url = f"https://{FRESHSERVICE_DOMAIN}/api/v2/solutions/categories/{id}"
     headers = get_auth_headers()
 
-    async with httpx.AsyncClient() as client:
+    async with httpx.AsyncClient(timeout=30.0) as client:
         try:
             response = await client.get(url, headers=headers)
             response.raise_for_status()  
@@ -2802,7 +2804,7 @@ async def create_solution_category(
 
     category_data = {key: value for key, value in category_data.items() if value is not None}
 
-    async with httpx.AsyncClient() as client:
+    async with httpx.AsyncClient(timeout=30.0) as client:
         try:
             response = await client.post(url, headers=headers, json=category_data)
             response.raise_for_status() 
@@ -2850,7 +2852,7 @@ async def update_solution_category(
    
     category_data = {key: value for key, value in category_data.items() if value is not None}
 
-    async with httpx.AsyncClient() as client:
+    async with httpx.AsyncClient(timeout=30.0) as client:
         try:
             response = await client.put(url, headers=headers, json=category_data)
             response.raise_for_status()  
@@ -2881,7 +2883,7 @@ async def get_list_of_solution_folder(id:int) -> Dict[str, Any]:
     url = f"https://{FRESHSERVICE_DOMAIN}/api/v2/solutions/folders?category_id={id}"
     headers = get_auth_headers()
 
-    async with httpx.AsyncClient() as client:
+    async with httpx.AsyncClient(timeout=30.0) as client:
         try:
             response = await client.get(url, headers=headers)
             response.raise_for_status()  
@@ -2913,7 +2915,7 @@ async def get_solution_folder(id: int) -> Dict[str, Any]:
     url = f"https://{FRESHSERVICE_DOMAIN}/api/v2/solutions/folders/{id}"
     headers = get_auth_headers()
 
-    async with httpx.AsyncClient() as client:
+    async with httpx.AsyncClient(timeout=30.0) as client:
         try:
             response = await client.get(url, headers=headers)
             response.raise_for_status()  
@@ -2945,7 +2947,7 @@ async def get_list_of_solution_article(id:int) -> Dict[str, Any]:
     url = f"https://{FRESHSERVICE_DOMAIN}/api/v2/solutions/articles?folder_id={id}"
     headers = get_auth_headers()
 
-    async with httpx.AsyncClient() as client:
+    async with httpx.AsyncClient(timeout=30.0) as client:
         try:
             response = await client.get(url, headers=headers)
             response.raise_for_status() 
@@ -2977,7 +2979,7 @@ async def get_solution_article(id:int) -> Dict[str, Any]:
     url = f"https://{FRESHSERVICE_DOMAIN}/api/v2/solutions/articles/{id}"
     headers = get_auth_headers()
 
-    async with httpx.AsyncClient() as client:
+    async with httpx.AsyncClient(timeout=30.0) as client:
         try:
             response = await client.get(url, headers=headers)
             response.raise_for_status()  
@@ -3030,7 +3032,7 @@ async def create_solution_article(
 
     article_data = {key: value for key, value in article_data.items() if value is not None}
 
-    async with httpx.AsyncClient() as client:
+    async with httpx.AsyncClient(timeout=30.0) as client:
         try:
             response = await client.post(url, headers=headers, json=article_data)
             response.raise_for_status()
@@ -3083,7 +3085,7 @@ async def update_solution_article(
 
     update_data = {key: value for key, value in update_data.items() if value is not None}
 
-    async with httpx.AsyncClient() as client:
+    async with httpx.AsyncClient(timeout=30.0) as client:
         try:
             response = await client.put(url, headers=headers, json=update_data)
             response.raise_for_status()
@@ -3133,7 +3135,7 @@ async def create_solution_folder(
 
     payload = {k: v for k, v in payload.items() if v is not None}
 
-    async with httpx.AsyncClient() as client:
+    async with httpx.AsyncClient(timeout=30.0) as client:
         try:
             response = await client.post(url, headers=headers, json=payload)
             response.raise_for_status()
@@ -3176,7 +3178,7 @@ async def update_solution_folder(
 
     payload = {k: v for k, v in payload.items() if v is not None}
 
-    async with httpx.AsyncClient() as client:
+    async with httpx.AsyncClient(timeout=30.0) as client:
         try:
             response = await client.put(url, headers=headers, json=payload)
             response.raise_for_status()
@@ -3209,7 +3211,7 @@ async def publish_solution_article(article_id: int) -> Dict[str, Any]:
 
     payload = {"status": 2}
 
-    async with httpx.AsyncClient() as client:
+    async with httpx.AsyncClient(timeout=30.0) as client:
         try:
             response = await client.put(url, headers=headers,json=payload)
             response.raise_for_status()
