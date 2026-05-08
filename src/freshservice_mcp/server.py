@@ -1,14 +1,17 @@
 import os
-import re   
+import re
 import httpx
 import logging
 import base64
 import json
+import sqlite3
 import urllib.parse
+from datetime import datetime, timezone
+from pathlib import Path
 from typing import Optional, Dict, Union, Any, List
-from mcp.server.fastmcp import FastMCP 
+from mcp.server.fastmcp import FastMCP
 from enum import IntEnum, Enum
-from pydantic import BaseModel, Field 
+from pydantic import BaseModel, Field
 
 
 # NOTE: load_dotenv() removed - Claude Desktop injects env vars directly
@@ -389,7 +392,7 @@ async def delete_ticket(ticket_id: int) -> str:
             except ValueError:
                 return "Error: Unexpected response format"
     
-#GET TICKET BY ID  
+#GET TICKET BY ID
 @mcp.tool(structured_output=False)
 async def get_ticket_by_id(ticket_id:int) -> Dict[str, Any]:
     """Get a ticket in Freshservice."""
@@ -399,7 +402,108 @@ async def get_ticket_by_id(ticket_id:int) -> Dict[str, Any]:
     async with httpx.AsyncClient(timeout=30.0) as client:
         response = await client.get(url,headers=headers)
         return response.json()
-    
+
+#SEARCH LOCAL TICKETS (Sauron cache — read-only, no API calls)
+LOCAL_CACHE_PATH = Path.home() / "projects" / "sauron" / "tickets.db"
+
+@mcp.tool()
+async def search_local_tickets(
+    keywords: str,
+    limit: int = 10,
+    recency_weight: float = 0.5,
+) -> Dict[str, Any]:
+    """Search the locally cached Freshservice ticket database using FTS5
+    full-text search. This returns historical tickets matching the given
+    keywords, ranked by a combination of FTS5 relevance and recency.
+
+    Use this INSTEAD of filter_tickets when looking for similar past
+    tickets by subject or content. The local cache contains the full team's
+    tickets from the last 180 days with agent response text and notes
+    indexed for fast keyword search.
+
+    Args:
+        keywords: FTS5 search query. Can be a single word, multiple words,
+                  or FTS5 syntax (e.g. "pendo OR okta", "pendo NEAR access").
+                  See https://www.sqlite.org/fts5.html#full_text_query_syntax
+        limit: Maximum number of results to return (default 10, max 50).
+        recency_weight: Float 0.0-1.0 controlling how much to weight recency
+                        vs FTS5 relevance. 0.0 = pure relevance, 1.0 = pure
+                        recency, 0.5 = balanced (default).
+    """
+    if not LOCAL_CACHE_PATH.exists():
+        return {
+            "error": "Local cache not found. Run sauron-sync.py to populate.",
+            "cache_path": str(LOCAL_CACHE_PATH),
+        }
+    limit = max(1, min(int(limit), 50))
+    recency_weight = max(0.0, min(float(recency_weight), 1.0))
+
+    conn = sqlite3.connect(f"file:{LOCAL_CACHE_PATH}?mode=ro", uri=True)
+    conn.row_factory = sqlite3.Row
+    try:
+        row = conn.execute(
+            "SELECT value FROM sync_meta WHERE key = 'last_sync_completed'"
+        ).fetchone()
+        last_synced = row["value"] if row else None
+        cache_age_hours: Optional[int] = None
+        cache_status = "unknown"
+        if last_synced:
+            try:
+                last_dt = datetime.strptime(
+                    last_synced, "%Y-%m-%dT%H:%M:%SZ"
+                ).replace(tzinfo=timezone.utc)
+                age_h = (datetime.now(timezone.utc) - last_dt).total_seconds() / 3600.0
+                cache_age_hours = int(age_h)
+                if age_h < 24:
+                    cache_status = "fresh"
+                elif age_h < 72:
+                    cache_status = "stale"
+                else:
+                    cache_status = "very_stale"
+            except ValueError:
+                pass
+
+        try:
+            total_matches = conn.execute(
+                "SELECT COUNT(*) AS n FROM tickets_fts WHERE tickets_fts MATCH :q",
+                {"q": keywords},
+            ).fetchone()["n"]
+            rows = conn.execute(
+                """
+                WITH ranked AS (
+                  SELECT
+                    t.id, t.subject, t.category, t.sub_category,
+                    t.requester_email, t.created_at, t.updated_at,
+                    SUBSTR(t.first_response_text, 1, 1000) AS first_response_text,
+                    SUBSTR(t.last_agent_note_text, 1, 1000) AS last_agent_note_text,
+                    -bm25(tickets_fts) AS fts_rank,
+                    (julianday('now') - julianday(t.created_at)) AS age_days
+                  FROM tickets_fts f
+                  JOIN tickets t ON t.id = f.rowid
+                  WHERE tickets_fts MATCH :q
+                )
+                SELECT *,
+                  ((1 - :rw) * fts_rank)
+                  + (:rw * (1.0 / (1 + age_days / 30.0))) AS combined_score
+                FROM ranked
+                ORDER BY combined_score DESC
+                LIMIT :lim
+                """,
+                {"q": keywords, "rw": recency_weight, "lim": limit},
+            ).fetchall()
+        except sqlite3.OperationalError as e:
+            return {"error": f"Invalid search syntax: {e}"}
+    finally:
+        conn.close()
+
+    return {
+        "cache_age_hours": cache_age_hours,
+        "cache_last_synced": last_synced,
+        "cache_status": cache_status,
+        "total_matches": total_matches,
+        "tickets": [dict(r) for r in rows],
+    }
+
 #GET ALL CHANGES
 @mcp.tool()
 async def get_changes(
