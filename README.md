@@ -166,27 +166,31 @@ This MCP server is licensed under the MIT License. See the LICENSE file in the p
 - [Claude Desktop Integration Guide](https://docs.anthropic.com/claude/docs/claude-desktop)
 - [MCP Protocol Specification](https://modelcontextprotocol.io/)
 
-##Fork notice
+## Fork notice
 
-Personal fork of effytech/freshservice_mcp, maintained for internal use. Not intended for public consumption or ongoing maintenance.
+Personal fork of [effytech/freshservice_mcp](https://github.com/effytech/freshservice_mcp), maintained for internal use. Not intended for public consumption or ongoing maintenance.
 
-Changes from upstream
-Security & hygiene (commit d6a80ad)
-Added python-dotenv as an explicit dependency (was transitively pulled)
-Removed load_dotenv() at import time; env vars are expected to be injected by the host process
-Added 30s timeout to all httpx.AsyncClient() calls
-Redacted raw response bodies from HTTP error returns (returns status code + a "redacted" note instead of e.response.text, so tracebacks can't leak sensitive payloads)
-New tool (commit 5d88486)
-search_local_tickets — queries a local SQLite/FTS5 cache of Freshservice tickets. Sync script is maintained separately.
-Dependency pin (commit b183482)
-Pinned mcp[cli]<2. Upstream mcp 2.0.0 dropped mcp.server.fastmcp (moved into a new submodule layout); unpinned installs break with ModuleNotFoundError: No module named 'mcp.server.fastmcp'.
-Known issue: mcp 2.0 breakage
+### Changes from upstream
+
+- **Security & hygiene (commit `d6a80ad`)**
+  - Added `python-dotenv` as an explicit dependency (was transitively pulled)
+  - Removed `load_dotenv()` at import time; env vars are expected to be injected by the host process
+  - Added 30s timeout to all `httpx.AsyncClient()` calls
+  - Redacted raw response bodies from HTTP error returns (returns status code + a "redacted" note instead of `e.response.text`, so tracebacks can't leak sensitive payloads)
+- **New tool (commit `5d88486`)**
+  - `search_local_tickets` — queries a local SQLite/FTS5 cache of Freshservice tickets. Sync script is maintained separately.
+- **Dependency pin (commit `b183482`)**
+  - Pinned `mcp[cli]<2`. Upstream `mcp` 2.0.0 dropped `mcp.server.fastmcp` (moved into a new submodule layout); unpinned installs break with `ModuleNotFoundError: No module named 'mcp.server.fastmcp'`.
+
+### Known issue: `mcp` 2.0 breakage
 
 If you fork this or the upstream repo and get:
 
+```
 ModuleNotFoundError: No module named 'mcp.server.fastmcp'
+```
 
-…your mcp dependency resolved to 2.0.0 or later. Pin mcp[cli]<2 in pyproject.toml, commit, and bump the SHA in claude_desktop_config.json — uvx caches builds by SHA, so without a new SHA the fix won't be picked up. uv cache clean if needed.
+…your `mcp` dependency resolved to 2.0.0 or later. Pin `mcp[cli]<2` in `pyproject.toml`, commit, and **bump the SHA in `claude_desktop_config.json`** — `uvx` caches builds by SHA, so without a new SHA the fix won't be picked up. `uv cache clean` if needed.
 
 ---
 
